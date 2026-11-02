@@ -34,14 +34,13 @@ jobs:
         id: source
         shell: bash
         run: |
-          ZIP_FILE="$(find . -type f \
-            -iname 'PyroRealism-NeoForge-1.21.1-GitHub-Build.zip' \
+          ZIP_FILE="$(find . -maxdepth 1 -type f \
+            -iname '*.zip' \
             -not -path './.git/*' \
-            -print -quit)"
+            -print | head -n 1)"
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "::error::GitHub Build ZIP not found"
-            find . -type f -iname '*.zip'
+            echo "::error::No ZIP file found in repository root"
             exit 1
           fi
 
@@ -54,7 +53,7 @@ jobs:
           mkdir -p extracted
           unzip -q "${{ steps.source.outputs.zip }}" -d extracted
 
-          echo "ZIP contents:"
+          echo "Archive contents:"
           find extracted -maxdepth 4 -type f | head -200
 
       - name: Find Gradle project
@@ -67,28 +66,27 @@ jobs:
             -print -quit)"
 
           if [ -z "$BUILD_FILE" ]; then
-            echo "::error::No build.gradle or build.gradle.kts found in ZIP"
+            echo "::error::No Gradle build file found inside ZIP"
             exit 1
           fi
 
           PROJECT_DIR="$(dirname "$BUILD_FILE")"
           echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-          echo "Gradle project: $PROJECT_DIR"
+          echo "Found project: $PROJECT_DIR"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.12.1'
 
-      - name: Build mod
+      - name: Compile mod
         working-directory: ${{ steps.project.outputs.dir }}
         run: gradle build --no-daemon --stacktrace
 
-      - name: Upload compiled JAR
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: PyroRealism-NeoForge-1.21.1
-          path: |
-            extracted/**/build/libs/*.jar
+          name: PyroRealism-Fire-Smoke
+          path: extracted/**/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
